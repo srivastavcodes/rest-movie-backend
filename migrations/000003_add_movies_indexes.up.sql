@@ -1,2 +1,3 @@
-CREATE INDEX IF NOT EXISTS movies_title_idx ON movies USING GIN (to_tsvector('simple', title));
-CREATE INDEX IF NOT EXISTS movies_genres_idx ON movies USING GIN (genres);
+CREATE INDEX idx_movies_title ON movies (title);
+
+CREATE INDEX idx_movie_genres_movie ON movie_genres (movie_id);

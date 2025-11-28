@@ -1,10 +1,9 @@
 CREATE TABLE IF NOT EXISTS users
 (
-    id            bigserial PRIMARY KEY,
-    created_at    timestamp(0) with time zone NOT NULL DEFAULT now(),
-    name          text                        NOT NULL,
-    email         citext unique               NOT NULL,
-    password_hash bytea                       NOT NULL,
-    activated     bool                        NOT NULL,
-    version       integer                     NOT NULL DEFAULT 1
+    id            VARCHAR(36) PRIMARY KEY,
+    created_at    TIMESTAMP          NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    name          VARCHAR(50)        NOT NULL,
+    email         VARCHAR(50) UNIQUE NOT NULL,
+    password_hash VARCHAR(255)       NOT NULL,
+    activated     BOOL               NOT NULL
 );

@@ -40,7 +40,7 @@ db/mig/up:
 ## db/migrations/down: apply all up database migrations
 .PHONY: db/mig/down
 db/mig/down:
-	@echo 'Running up migrations...'
+	@echo 'Running down migrations...'
 	migrate -path ./migrations -database ${MOVIE_CATALOGUE} down
 
 # ================================================================================================== #
