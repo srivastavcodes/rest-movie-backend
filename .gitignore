@@ -2,13 +2,10 @@
 # If you prefer the allow list template instead of the deny list, see community template:
 # https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
 #
-# ./bin/
 bin/
-# .env files
+.idea
 *.envrc
-# .http files
 *.http
-# Binaries for programs and plugins
 *.exe
 *.exe~
 *.dll
