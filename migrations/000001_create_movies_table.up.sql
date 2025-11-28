@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS movies
 (
-    id         bigserial primary key,
+    id         varchar primary key,
     created_at timestamp(0) with time zone not null default now(),
     title      text                        not null,
     year       integer                     not null,
