@@ -14,6 +14,6 @@ CREATE TABLE IF NOT EXISTS user_permissions
 );
 
 INSERT INTO permissions (code)
-VALUES ('user'),
-       ('admin'),
-       ('moderator');
+VALUES ('movie:user'),
+       ('movie:admin'),
+       ('movie:moderator');
