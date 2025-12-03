@@ -9,23 +9,22 @@ import (
 
 	"FernArchive/internal/validator"
 
+	"github.com/go-sql-driver/mysql"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
-
-const constraintUniqueEmail = `pq: duplicate key value violates unique constraint "users_email_key"`
 
 var ErrDuplicateEmail = errors.New("duplicate email")
 
 var AnonymousUser = &User{}
 
 type User struct {
-	Id        int64     `json:"id"`
+	Id        string    `json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	Name      string    `json:"name"`
 	Email     string    `json:"email"`
 	Password  password  `json:"-"`
 	Activated bool      `json:"activated"`
-	Version   int       `json:"-"`
 }
 
 func (usr *User) IsAnonymous() bool {
@@ -89,19 +88,17 @@ type UserModel struct {
 	Db *sql.DB
 }
 
-func (mdl *UserModel) InsertUser(user *User) error {
-	query := `INSERT INTO users (name, email, password_hash, activated) VALUES ($1, $2, $3, $4)
-                RETURNING id, created_at, version`
+func (mdl *UserModel) InsertUser(user *User, ctx context.Context) error {
+	user.Id = uuid.New().String()
 
-	args := []any{user.Name, user.Email, user.Password.hash, user.Activated}
+	query := `INSERT INTO users (id, name, email, password_hash, activated)  VALUES (?, ?, ?, ?, ?)`
+	args := []any{user.Id, user.Name, user.Email, user.Password.hash, user.Activated}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	err := mdl.Db.QueryRowContext(ctx, query, args...).Scan(&user.Id, &user.CreatedAt, &user.Version)
+	_, err := mdl.Db.ExecContext(ctx, query, args...)
 	if err != nil {
+		var mysqlErr *mysql.MySQLError
 		switch {
-		case err.Error() == constraintUniqueEmail:
+		case errors.As(err, &mysqlErr) && mysqlErr.Number == 1062:
 			return ErrDuplicateEmail
 		default:
 			return err
@@ -110,21 +107,17 @@ func (mdl *UserModel) InsertUser(user *User) error {
 	return nil
 }
 
-func (mdl *UserModel) GetByEmail(email string) (*User, error) {
-	query := `SELECT id, created_at, name, email, password_hash, activated, version FROM users 
-                WHERE email = $1`
-	var user User
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
+func (mdl *UserModel) GetByEmail(email string, ctx context.Context) (*User, error) {
+	var (
+		query = `SELECT id, created_at, name, email, password_hash, activated FROM users WHERE email = ?`
+		user  = &User{}
+	)
 	err := mdl.Db.QueryRowContext(ctx, query, email).Scan(&user.Id,
 		&user.CreatedAt,
 		&user.Name,
 		&user.Email,
 		&user.Password.hash,
 		&user.Activated,
-		&user.Version,
 	)
 	if err != nil {
 		switch {
@@ -134,47 +127,51 @@ func (mdl *UserModel) GetByEmail(email string) (*User, error) {
 			return nil, err
 		}
 	}
-	return &user, nil
+	return user, nil
 }
 
-func (mdl *UserModel) UpdateUser(user *User) error {
-	query := `UPDATE users SET name=$1, email=$2, password_hash=$3, activated=$4, version=version+1
-                WHERE id = $5 AND version = $6 RETURNING version`
+func (mdl *UserModel) UpdateUser(user *User, ctx context.Context) error {
+	query := `UPDATE users SET name=?, email=?, password_hash=?, activated=? WHERE id = ?`
 
-	args := []any{user.Name, user.Email, user.Password.hash, user.Activated, user.Id, user.Version}
+	args := []any{user.Name, user.Email, user.Password.hash, user.Activated, user.Id}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	err := mdl.Db.QueryRowContext(ctx, query, args...).Scan(&user.Version)
+	res, err := mdl.Db.ExecContext(ctx, query, args...)
 	if err != nil {
+		var mysqlErr *mysql.MySQLError
 		switch {
-		case errors.Is(err, sql.ErrNoRows):
-			return ErrEditConflict
-		case err.Error() == constraintUniqueEmail:
+		case errors.As(err, &mysqlErr) && mysqlErr.Number == 1062:
 			return ErrDuplicateEmail
 		default:
 			return err
 		}
 	}
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return ErrRecordNotFound
+	}
 	return nil
 }
 
-func (mdl *UserModel) GetForToken(scope, plainTxt string) (*User, error) {
-	hash := sha256.Sum256([]byte(plainTxt))
+func (mdl *UserModel) GetForToken(scope, plainTxt string, ctx context.Context) (*User, error) {
+	var (
+		hash  = sha256.Sum256([]byte(plainTxt))
+		query = `SELECT u.id, u.created_at, u.name, u.email, u.password_hash, u.activated FROM users AS u 
+		    	   INNER JOIN tokens AS t ON u.id = t.user_id WHERE t.hash = ? AND t.scope = ? 
+			   AND t.expiry > ?`
 
-	query := `SELECT users.id, users.created_at, users.name, users.email, users.password_hash, users.activated, users.version
-		    FROM users INNER JOIN tokens ON users.id = tokens.user_id
-		    WHERE tokens.hash = $1 AND tokens.scope = $2 AND tokens.expiry > $3`
-
-	args := []any{hash[:], scope, time.Now()}
-	var user User
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
+		user = &User{}
+		args = []any{hash[:], scope, time.Now()}
+	)
 	err := mdl.Db.QueryRowContext(ctx, query, args...).Scan(&user.Id,
-		&user.CreatedAt, &user.Name, &user.Email, &user.Password.hash, &user.Activated, &user.Version)
+		&user.CreatedAt,
+		&user.Name,
+		&user.Email,
+		&user.Password.hash,
+		&user.Activated,
+	)
 	if err != nil {
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
@@ -183,5 +180,5 @@ func (mdl *UserModel) GetForToken(scope, plainTxt string) (*User, error) {
 			return nil, err
 		}
 	}
-	return &user, nil
+	return user, nil
 }
