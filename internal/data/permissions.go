@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"slices"
 	"strings"
-	"time"
 )
 
 type Permissions []string
@@ -20,12 +19,9 @@ type PermissionModel struct {
 	Db *sql.DB
 }
 
-func (mdl PermissionModel) GetAllForUser(ctx context.Context, userId int64) (Permissions, error) {
+func (mdl PermissionModel) GetAllForUser(ctx context.Context, userId string) (Permissions, error) {
 	query := `SELECT p.code FROM permissions AS p INNER JOIN user_permissions AS up ON up.permission_id = p.id
                 INNER JOIN users AS u ON up.user_id = u.id WHERE u.id = ?`
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
 
 	rows, err := mdl.Db.QueryContext(ctx, query, userId)
 	if err != nil {
@@ -51,7 +47,7 @@ func (mdl PermissionModel) GetAllForUser(ctx context.Context, userId int64) (Per
 	return permissions, nil
 }
 
-func (mdl PermissionModel) AddForUser(ctx context.Context, userId int64, codes ...string) error {
+func (mdl PermissionModel) AddForUser(ctx context.Context, userId string, codes ...string) error {
 	if len(codes) <= 0 {
 		return nil
 	}

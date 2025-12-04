@@ -19,15 +19,16 @@ const (
 type Token struct {
 	PlainText string    `json:"token"`
 	Hash      []byte    `json:"-"`
-	UserId    int64     `json:"-"`
+	UserId    string    `json:"-"`
 	Expiry    time.Time `json:"expiry"`
 	Scope     string    `json:"-"`
 }
 
-func generateToken(userId int64, ttl time.Duration, scope string) (*Token, error) {
-	token := &Token{UserId: userId,
-		Expiry: time.Now().Add(ttl),
+func generateToken(userId string, ttl time.Duration, scope string) (*Token, error) {
+	token := &Token{
+		UserId: userId,
 		Scope:  scope,
+		Expiry: time.Now().Add(ttl),
 	}
 	randomBytes := make([]byte, 16)
 	_, _ = rand.Read(randomBytes)
@@ -49,16 +50,16 @@ type TokenModel struct {
 	Db *sql.DB
 }
 
-func (mdl *TokenModel) NewToken(userId int64, ttl time.Duration, scope string, ctx context.Context) (*Token, error) {
+func (mdl *TokenModel) NewToken(ctx context.Context, userId string, ttl time.Duration, scope string) (*Token, error) {
 	token, err := generateToken(userId, ttl, scope)
 	if err != nil {
 		return nil, err
 	}
-	err = mdl.Insert(token, ctx)
+	err = mdl.Insert(ctx, token)
 	return token, err
 }
 
-func (mdl *TokenModel) Insert(token *Token, ctx context.Context) error {
+func (mdl *TokenModel) Insert(ctx context.Context, token *Token) error {
 	var (
 		query = `INSERT INTO tokens (hash, user_id, expiry, scope) VALUES (?, ?, ?, ?)`
 		args  = []any{token.Hash, token.UserId, token.Expiry, token.Scope}
@@ -67,7 +68,7 @@ func (mdl *TokenModel) Insert(token *Token, ctx context.Context) error {
 	return err
 }
 
-func (mdl *TokenModel) DeleteAllForUser(scope string, userId int64, ctx context.Context) error {
+func (mdl *TokenModel) DeleteAllForUser(ctx context.Context, scope string, userId string) error {
 	var (
 		query = `DELETE FROM tokens WHERE scope=? AND user_id=?`
 		args  = []any{scope, userId}
