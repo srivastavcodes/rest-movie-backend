@@ -3,28 +3,26 @@ package data
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log/slog"
 	"slices"
+	"strings"
 	"time"
-
-	"github.com/lib/pq"
 )
 
 type Permissions []string
 
-func (psn Permissions) Include(code string) bool {
-	return slices.Contains(psn, code)
+func (p Permissions) Include(code string) bool {
+	return slices.Contains(p, code)
 }
 
 type PermissionModel struct {
 	Db *sql.DB
 }
 
-func (mdl PermissionModel) GetAllForUser(userId int64) (Permissions, error) {
-	query := `SELECT permissions.code FROM permissions 
-                INNER JOIN user_permissions ON user_permissions.permission_id = permissions.id
-                INNER JOIN users ON user_permissions.user_id = users.id
-                WHERE users.id = $1`
+func (mdl PermissionModel) GetAllForUser(ctx context.Context, userId int64) (Permissions, error) {
+	query := `SELECT p.code FROM permissions AS p INNER JOIN user_permissions AS up ON up.permission_id = p.id
+                INNER JOIN users AS u ON up.user_id = u.id WHERE u.id = ?`
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
@@ -39,6 +37,7 @@ func (mdl PermissionModel) GetAllForUser(userId int64) (Permissions, error) {
 		}
 	}(rows)
 	var permissions Permissions
+
 	for rows.Next() {
 		var permission string
 		if err := rows.Scan(&permission); err != nil {
@@ -52,13 +51,22 @@ func (mdl PermissionModel) GetAllForUser(userId int64) (Permissions, error) {
 	return permissions, nil
 }
 
-func (mdl PermissionModel) AddForUser(userId int64, codes ...string) error {
-	query := `INSERT INTO user_permissions
-                SELECT $1, permissions.id FROM permissions WHERE permissions.code = ANY($2)`
+func (mdl PermissionModel) AddForUser(ctx context.Context, userId int64, codes ...string) error {
+	if len(codes) <= 0 {
+		return nil
+	}
+	placeholders := strings.Repeat("?,", len(codes))
+	placeholders = placeholders[:len(placeholders)-1]
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
+	query := fmt.Sprintf(`INSERT INTO user_permissions SELECT ?, p.id FROM permissions AS p WHERE p.code IN (%s)`,
+		placeholders,
+	)
+	args := make([]any, 0, len(codes)+1)
+	args = append(args, userId)
 
-	_, err := mdl.Db.ExecContext(ctx, query, userId, pq.Array(codes))
+	for _, code := range codes {
+		args = append(args, code)
+	}
+	_, err := mdl.Db.ExecContext(ctx, query, args...)
 	return err
 }
