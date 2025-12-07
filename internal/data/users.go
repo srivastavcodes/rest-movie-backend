@@ -90,10 +90,10 @@ type UserModel struct {
 
 func (mdl *UserModel) InsertUser(user *User, ctx context.Context) error {
 	user.Id = uuid.New().String()
-
-	query := `INSERT INTO users (id, name, email, password_hash, activated)  VALUES (?, ?, ?, ?, ?)`
-	args := []any{user.Id, user.Name, user.Email, user.Password.hash, user.Activated}
-
+	var (
+		query = `INSERT INTO users (id, name, email, password_hash, activated)  VALUES (?, ?, ?, ?, ?)`
+		args  = []any{user.Id, user.Name, user.Email, user.Password.hash, user.Activated}
+	)
 	_, err := mdl.Db.ExecContext(ctx, query, args...)
 	if err != nil {
 		var mysqlErr *mysql.MySQLError
@@ -108,10 +108,9 @@ func (mdl *UserModel) InsertUser(user *User, ctx context.Context) error {
 }
 
 func (mdl *UserModel) GetByEmail(email string, ctx context.Context) (*User, error) {
-	var (
-		query = `SELECT id, created_at, name, email, password_hash, activated FROM users WHERE email = ?`
-		user  = &User{}
-	)
+	query := `SELECT id, created_at, name, email, password_hash, activated FROM users WHERE email = ?`
+	var user User
+
 	err := mdl.Db.QueryRowContext(ctx, query, email).Scan(&user.Id,
 		&user.CreatedAt,
 		&user.Name,
@@ -127,14 +126,14 @@ func (mdl *UserModel) GetByEmail(email string, ctx context.Context) (*User, erro
 			return nil, err
 		}
 	}
-	return user, nil
+	return &user, nil
 }
 
 func (mdl *UserModel) UpdateUser(user *User, ctx context.Context) error {
-	query := `UPDATE users SET name=?, email=?, password_hash=?, activated=? WHERE id = ?`
-
-	args := []any{user.Name, user.Email, user.Password.hash, user.Activated, user.Id}
-
+	var (
+		query = `UPDATE users SET name=?, email=?, password_hash=?, activated=? WHERE id = ?`
+		args  = []any{user.Name, user.Email, user.Password.hash, user.Activated, user.Id}
+	)
 	res, err := mdl.Db.ExecContext(ctx, query, args...)
 	if err != nil {
 		var mysqlErr *mysql.MySQLError
@@ -162,9 +161,9 @@ func (mdl *UserModel) GetForToken(scope, plainTxt string, ctx context.Context) (
 		    	   INNER JOIN tokens AS t ON u.id = t.user_id WHERE t.hash = ? AND t.scope = ? 
 			   AND t.expiry > ?`
 
-		user = &User{}
 		args = []any{hash[:], scope, time.Now()}
 	)
+	var user User
 	err := mdl.Db.QueryRowContext(ctx, query, args...).Scan(&user.Id,
 		&user.CreatedAt,
 		&user.Name,
@@ -180,5 +179,5 @@ func (mdl *UserModel) GetForToken(scope, plainTxt string, ctx context.Context) (
 			return nil, err
 		}
 	}
-	return user, nil
+	return &user, nil
 }
