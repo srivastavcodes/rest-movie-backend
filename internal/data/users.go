@@ -88,7 +88,7 @@ type UserModel struct {
 	Db *sql.DB
 }
 
-func (mdl *UserModel) InsertUser(user *User, ctx context.Context) error {
+func (mdl *UserModel) InsertUser(ctx context.Context, user *User) error {
 	user.Id = uuid.New().String()
 	var (
 		query = `INSERT INTO users (id, name, email, password_hash, activated)  VALUES (?, ?, ?, ?, ?)`
@@ -107,7 +107,7 @@ func (mdl *UserModel) InsertUser(user *User, ctx context.Context) error {
 	return nil
 }
 
-func (mdl *UserModel) GetByEmail(email string, ctx context.Context) (*User, error) {
+func (mdl *UserModel) GetByEmail(ctx context.Context, email string) (*User, error) {
 	query := `SELECT id, created_at, name, email, password_hash, activated FROM users WHERE email = ?`
 	var user User
 
@@ -129,7 +129,7 @@ func (mdl *UserModel) GetByEmail(email string, ctx context.Context) (*User, erro
 	return &user, nil
 }
 
-func (mdl *UserModel) UpdateUser(user *User, ctx context.Context) error {
+func (mdl *UserModel) UpdateUser(ctx context.Context, user *User) error {
 	var (
 		query = `UPDATE users SET name=?, email=?, password_hash=?, activated=? WHERE id = ?`
 		args  = []any{user.Name, user.Email, user.Password.hash, user.Activated, user.Id}
@@ -154,7 +154,7 @@ func (mdl *UserModel) UpdateUser(user *User, ctx context.Context) error {
 	return nil
 }
 
-func (mdl *UserModel) GetForToken(scope, plainTxt string, ctx context.Context) (*User, error) {
+func (mdl *UserModel) GetForToken(ctx context.Context, scope, plainTxt string) (*User, error) {
 	var (
 		hash  = sha256.Sum256([]byte(plainTxt))
 		query = `SELECT u.id, u.created_at, u.name, u.email, u.password_hash, u.activated FROM users AS u 
