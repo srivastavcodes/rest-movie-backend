@@ -14,12 +14,13 @@ import (
 
 func (bknd *backend) serve() error {
 	srvr := &http.Server{
-		ErrorLog:     slog.NewLogLogger(bknd.logger.Handler(), slog.LevelError),
-		Addr:         fmt.Sprintf(":%d", bknd.config.port),
-		Handler:      bknd.routes(),
-		ReadTimeout:  10 * time.Second,
-		IdleTimeout:  time.Minute,
-		WriteTimeout: 10 * time.Second,
+		ErrorLog:          slog.NewLogLogger(bknd.logger.Handler(), slog.LevelError),
+		Handler:           bknd.routes(),
+		Addr:              fmt.Sprintf(":%d", bknd.config.port),
+		ReadTimeout:       10 * time.Second,
+		ReadHeaderTimeout: 3 * time.Second,
+		IdleTimeout:       120 * time.Second,
+		WriteTimeout:      10 * time.Second,
 	}
 	shutdownError := make(chan error)
 	go func() {
