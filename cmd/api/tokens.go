@@ -15,7 +15,8 @@ func (bknd *backend) createAuthTokenHandler(w http.ResponseWriter, r *http.Reque
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}
-	if err := bknd.readJSON(w, r, &input); err != nil {
+	err := bknd.readJSON(w, r, &input)
+	if err != nil {
 		bknd.badRequestResponse(w, r, err)
 		return
 	}
@@ -34,14 +35,10 @@ func (bknd *backend) createAuthTokenHandler(w http.ResponseWriter, r *http.Reque
 	user, err := bknd.models.Users.GetByEmail(ctx, input.Email)
 	if err != nil {
 		switch {
-		case errors.Is(err, context.DeadlineExceeded):
-			bknd.deadlineExceededResponse(w, r)
-		case errors.Is(err, context.Canceled):
-			return
 		case errors.Is(err, data.ErrRecordNotFound):
 			bknd.invalidCredentialsResponse(w, r)
 		default:
-			bknd.serverErrorResponse(w, r, err)
+			bknd.commonErrs(w, r, err)
 		}
 		return
 	}
@@ -56,14 +53,7 @@ func (bknd *backend) createAuthTokenHandler(w http.ResponseWriter, r *http.Reque
 	}
 	token, err := bknd.models.Tokens.NewToken(ctx, user.Id, 360*time.Hour, data.ScopeAuthentication)
 	if err != nil {
-		switch {
-		case errors.Is(err, context.DeadlineExceeded):
-			bknd.deadlineExceededResponse(w, r)
-		case errors.Is(err, context.Canceled):
-			return
-		default:
-			bknd.serverErrorResponse(w, r, err)
-		}
+		bknd.commonErrs(w, r, err)
 		return
 	}
 	err = bknd.writeJSON(w, http.StatusCreated, envelope{"authentication_token": token}, nil)

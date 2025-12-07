@@ -1,6 +1,8 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net/http"
 )
@@ -19,6 +21,16 @@ func (bknd *backend) errorResponseJSON(w http.ResponseWriter, r *http.Request, s
 	if err != nil {
 		bknd.logError(r, err)
 		w.WriteHeader(http.StatusInternalServerError)
+	}
+}
+
+func (bknd *backend) commonErrs(w http.ResponseWriter, r *http.Request, err error) {
+	switch {
+	case errors.Is(err, context.DeadlineExceeded):
+		bknd.deadlineExceededResponse(w, r)
+	case errors.Is(err, context.Canceled):
+	default:
+		bknd.serverErrorResponse(w, r, err)
 	}
 }
 
