@@ -52,6 +52,11 @@ func (bknd *backend) rateLimitExceededResponse(w http.ResponseWriter, r *http.Re
 	bknd.errorResponseJSON(w, r, http.StatusTooManyRequests, msg)
 }
 
+func (bknd *backend) deadlineExceededResponse(w http.ResponseWriter, r *http.Request) {
+	msg := "deadline exceeded, please try after a few seconds"
+	bknd.errorResponseJSON(w, r, http.StatusGatewayTimeout, msg)
+}
+
 func (bknd *backend) invalidCredentialsResponse(w http.ResponseWriter, r *http.Request) {
 	msg := "invalid authentication credentials!"
 	bknd.errorResponseJSON(w, r, http.StatusUnauthorized, msg)
