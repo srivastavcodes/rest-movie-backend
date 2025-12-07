@@ -48,18 +48,18 @@ func (bknd *backend) registerUserHandler(w http.ResponseWriter, r *http.Request)
 			vldtr.AddError("email", "email already taken")
 			bknd.failedValidationResponse(w, r, vldtr.Errors)
 		default:
-			bknd.commonErrs(w, r, err)
+			bknd.commonErrors(w, r, err)
 		}
 		return
 	}
 	err = bknd.models.Permissions.AddForUser(ctx, user.Id, "movie:user")
 	if err != nil {
-		bknd.commonErrs(w, r, err)
+		bknd.commonErrors(w, r, err)
 		return
 	}
 	token, err := bknd.models.Tokens.NewToken(ctx, user.Id, 3*24*time.Hour, data.ScopeActivation)
 	if err != nil {
-		bknd.commonErrs(w, r, err)
+		bknd.commonErrors(w, r, err)
 		return
 	}
 	bknd.background(func() {
@@ -104,7 +104,7 @@ func (bknd *backend) activateUserHandler(w http.ResponseWriter, r *http.Request)
 			vldtr.AddError("token", "invalid or expired activation token")
 			bknd.failedValidationResponse(w, r, vldtr.Errors)
 		default:
-			bknd.commonErrs(w, r, err)
+			bknd.commonErrors(w, r, err)
 		}
 		return
 	}
@@ -116,13 +116,13 @@ func (bknd *backend) activateUserHandler(w http.ResponseWriter, r *http.Request)
 		case errors.Is(err, data.ErrEditConflict):
 			bknd.editConflictResponse(w, r)
 		default:
-			bknd.commonErrs(w, r, err)
+			bknd.commonErrors(w, r, err)
 		}
 		return
 	}
 	err = bknd.models.Tokens.DeleteAllForUser(ctx, data.ScopeActivation, user.Id)
 	if err != nil {
-		bknd.commonErrs(w, r, err)
+		bknd.commonErrors(w, r, err)
 		return
 	}
 	err = bknd.writeJSON(w, http.StatusOK, envelope{"user": user}, nil)

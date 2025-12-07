@@ -38,7 +38,7 @@ func (bknd *backend) createAuthTokenHandler(w http.ResponseWriter, r *http.Reque
 		case errors.Is(err, data.ErrRecordNotFound):
 			bknd.invalidCredentialsResponse(w, r)
 		default:
-			bknd.commonErrs(w, r, err)
+			bknd.commonErrors(w, r, err)
 		}
 		return
 	}
@@ -53,7 +53,7 @@ func (bknd *backend) createAuthTokenHandler(w http.ResponseWriter, r *http.Reque
 	}
 	token, err := bknd.models.Tokens.NewToken(ctx, user.Id, 360*time.Hour, data.ScopeAuthentication)
 	if err != nil {
-		bknd.commonErrs(w, r, err)
+		bknd.commonErrors(w, r, err)
 		return
 	}
 	err = bknd.writeJSON(w, http.StatusCreated, envelope{"authentication_token": token}, nil)

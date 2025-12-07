@@ -24,7 +24,7 @@ func (bknd *backend) errorResponseJSON(w http.ResponseWriter, r *http.Request, s
 	}
 }
 
-func (bknd *backend) commonErrs(w http.ResponseWriter, r *http.Request, err error) {
+func (bknd *backend) commonErrors(w http.ResponseWriter, r *http.Request, err error) {
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
 		bknd.deadlineExceededResponse(w, r)
