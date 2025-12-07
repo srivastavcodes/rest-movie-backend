@@ -17,7 +17,7 @@ import (
 	"FernArchive/internal/mailer"
 )
 
-import _ "github.com/lib/pq"
+import _ "github.com/go-sql-driver/mysql"
 
 const version = "1.0.0"
 
@@ -142,7 +142,7 @@ func runClFlags(cfg *config) {
 }
 
 func openDB(cfg config) (*sql.DB, error) {
-	db, err := sql.Open("postgres", cfg.db.dsn)
+	db, err := sql.Open("mysql", cfg.db.dsn)
 	if err != nil {
 		return nil, err
 	}
