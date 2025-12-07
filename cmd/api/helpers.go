@@ -27,17 +27,17 @@ func (bknd *backend) readIdParam(r *http.Request) (int64, error) {
 }
 
 func (bknd *backend) writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {
-	js, err := json.MarshalIndent(data, "", "\t")
+	jsn, err := json.MarshalIndent(data, "", "\t")
 	if err != nil {
 		return err
 	}
-	js = append(js, '\n')
+	jsn = append(jsn, '\n')
 	for key, value := range headers {
 		w.Header()[key] = value
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_, err = w.Write(js)
+	_, err = w.Write(jsn)
 	if err != nil {
 		bknd.logger.Info("Failed to write response", "err", err)
 	}
@@ -45,17 +45,17 @@ func (bknd *backend) writeJSON(w http.ResponseWriter, status int, data envelope,
 }
 
 func (bknd *backend) readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
-	maxBytes := 1_048_576
-	r.Body = http.MaxBytesReader(w, r.Body, int64(maxBytes))
+	var maxBytes int64 = 1_048_576
+	r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
 
-	dcdr := json.NewDecoder(r.Body)
-	dcdr.DisallowUnknownFields()
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
 
-	err := dcdr.Decode(dst)
+	err := dec.Decode(dst)
 	if err != nil {
 		return bknd.decodeJSONError(err)
 	}
-	err = dcdr.Decode(&struct{}{})
+	err = dec.Decode(&struct{}{})
 	if !errors.Is(err, io.EOF) {
 		return errors.New("body must contain exactly one JSON object")
 	}
