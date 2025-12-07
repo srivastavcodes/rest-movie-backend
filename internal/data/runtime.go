@@ -12,19 +12,19 @@ var ErrInvalidRuntimeFormat = errors.New("invalid runtime format")
 type Runtime int32
 
 //goland:noinspection GoMixedReceiverTypes
-func (rtm Runtime) MarshalJSON() ([]byte, error) {
-	jsonValue := fmt.Sprintf("%d mins", rtm)
-	quotedJSONValue := strconv.Quote(jsonValue)
-	return []byte(quotedJSONValue), nil
+func (r Runtime) MarshalJSON() ([]byte, error) {
+	length := fmt.Sprintf("%d mins", r)
+	quotedLength := strconv.Quote(length)
+	return []byte(quotedLength), nil
 }
 
 //goland:noinspection GoMixedReceiverTypes
-func (rtm *Runtime) UnmarshalJSON(jsonValue []byte) error {
-	unquotedJSONValue, err := strconv.Unquote(string(jsonValue))
+func (r *Runtime) UnmarshalJSON(length []byte) error {
+	unquotedLength, err := strconv.Unquote(string(length))
 	if err != nil {
 		return ErrInvalidRuntimeFormat
 	}
-	parts := strings.Split(unquotedJSONValue, " ")
+	parts := strings.Split(unquotedLength, " ")
 	if len(parts) != 2 || parts[1] != "mins" {
 		return ErrInvalidRuntimeFormat
 	}
@@ -32,6 +32,6 @@ func (rtm *Runtime) UnmarshalJSON(jsonValue []byte) error {
 	if err != nil {
 		return ErrInvalidRuntimeFormat
 	}
-	*rtm = Runtime(val)
+	*r = Runtime(val)
 	return nil
 }
