@@ -17,7 +17,7 @@ type Movie struct {
 	CreatedAt time.Time `json:"-"`
 	Title     string    `json:"title"`
 	Runtime   Runtime   `json:"runtime,omitempty"`
-	Year      time.Time `json:"year,omitempty"`
+	Year      int32     `json:"year,omitempty"`
 	Genres    []string  `json:"genres,omitempty"`
 }
 
@@ -277,7 +277,7 @@ func (movie *Movie) ApplyPartialUpdates(title *string, year *int32, runtime *Run
 
 func ValidateMovie(vldtr *validator.Validator, movie *Movie) {
 	vldtr.Check(movie.Title != "", "title", "must be provided")
-	vldtr.Check(len(movie.Title) <= 500, "title", "must not be more than 500 bytes long")
+	vldtr.Check(len(movie.Title) <= 50, "title", "must not be more than 500 bytes long")
 
 	vldtr.Check(movie.Year != 0, "year", "must be provided")
 	vldtr.Check(movie.Year >= 1888, "year", "must be greater than 1888")
