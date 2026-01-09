@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"expvar"
 	"fmt"
@@ -73,8 +74,8 @@ func (bknd *backend) rateLimiter(next http.Handler) http.Handler {
 
 func (bknd *backend) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 		w.Header().Add("Vary", "Authorization")
+
 		authHeader := r.Header.Get("Authorization")
 
 		if authHeader == "" {
@@ -83,17 +84,22 @@ func (bknd *backend) authenticate(next http.Handler) http.Handler {
 			return
 		}
 		headerParts := strings.SplitN(authHeader, " ", 2)
+
 		if len(headerParts) != 2 || headerParts[0] != "Bearer" {
 			bknd.invalidAuthTokenResponse(w, r)
 			return
 		}
 		authToken := headerParts[1]
 		vldtr := validator.NewValidator()
+
 		if data.ValidateTokenPlainText(vldtr, authToken); !vldtr.Valid() {
 			bknd.invalidAuthTokenResponse(w, r)
 			return
 		}
-		user, err := bknd.models.Users.GetForToken(data.ScopeAuthentication, authToken)
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		user, err := bknd.models.Users.GetForToken(ctx, data.ScopeAuthentication, authToken)
 		if err != nil {
 			switch {
 			case errors.Is(err, data.ErrRecordNotFound):
@@ -112,7 +118,10 @@ func (bknd *backend) requirePermission(code string, next http.HandlerFunc) http.
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		user := bknd.contextGetUser(r)
 
-		permissions, err := bknd.models.Permissions.GetAllForUser(user.Id)
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+
+		permissions, err := bknd.models.Permissions.GetAllForUser(ctx, user.Id)
 		if err != nil {
 			bknd.serverErrorResponse(w, r, err)
 			return

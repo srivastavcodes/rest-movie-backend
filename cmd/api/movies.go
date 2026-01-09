@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"FernArchive/internal/data"
 	"FernArchive/internal/validator"
@@ -32,7 +34,10 @@ func (bknd *backend) createMovieHandler(w http.ResponseWriter, r *http.Request) 
 		bknd.failedValidationResponse(w, r, vldtr.Errors)
 		return
 	}
-	err = bknd.models.Movies.Insert(movie)
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	err = bknd.models.Movies.Insert(ctx, movie)
 	if err != nil {
 		bknd.serverErrorResponse(w, r, err)
 		return
@@ -52,7 +57,10 @@ func (bknd *backend) showMovieHandler(w http.ResponseWriter, r *http.Request) {
 		bknd.notFoundResponse(w, r)
 		return
 	}
-	movie, err := bknd.models.Movies.Get(id)
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	movie, err := bknd.models.Movies.Get(ctx, id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -90,7 +98,10 @@ func (bknd *backend) listMovieHandler(w http.ResponseWriter, r *http.Request) {
 		bknd.failedValidationResponse(w, r, vldtr.Errors)
 		return
 	}
-	movies, metadata, err := bknd.models.Movies.GetAll(input.Title, input.Genres, input.Filters)
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	movies, metadata, err := bknd.models.Movies.GetAllByTitle(ctx, input.Title, input.Filters)
 	if err != nil {
 		bknd.serverErrorResponse(w, r, err)
 		return
@@ -107,7 +118,10 @@ func (bknd *backend) updateMovieHandler(w http.ResponseWriter, r *http.Request) 
 		bknd.notFoundResponse(w, r)
 		return
 	}
-	movie, err := bknd.models.Movies.Get(id)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
+	defer cancel()
+
+	movie, err := bknd.models.Movies.Get(ctx, id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -130,11 +144,12 @@ func (bknd *backend) updateMovieHandler(w http.ResponseWriter, r *http.Request) 
 	}
 	movie.ApplyPartialUpdates(input.Title, input.Year, input.Runtime, input.Genres)
 	vldtr := validator.NewValidator()
+
 	if data.ValidateMovie(vldtr, movie); !vldtr.Valid() {
 		bknd.failedValidationResponse(w, r, vldtr.Errors)
 		return
 	}
-	err = bknd.models.Movies.Update(movie)
+	err = bknd.models.Movies.Update(ctx, movie)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrEditConflict):
@@ -156,7 +171,10 @@ func (bknd *backend) deleteMovieHandler(w http.ResponseWriter, r *http.Request) 
 		bknd.notFoundResponse(w, r)
 		return
 	}
-	err = bknd.models.Movies.Delete(id)
+	ctx, cancel := context.WithTimeout(r.Context(), 3*time.Second)
+	defer cancel()
+
+	err = bknd.models.Movies.Delete(ctx, id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):

@@ -41,12 +41,12 @@ func (bknd *backend) serve() error {
 		shutdownError <- nil
 	}()
 	bknd.logger.Info("server started", "addr", srvr.Addr, "env", bknd.config.env)
+
 	err := srvr.ListenAndServe()
 	if !errors.Is(err, http.ErrServerClosed) {
 		return err
 	}
-	err = <-shutdownError
-	if err != nil {
+	if err = <-shutdownError; err != nil {
 		return err
 	}
 	bknd.logger.Info("server stopped", "addr", srvr.Addr, "env", bknd.config.env)

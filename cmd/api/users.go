@@ -38,7 +38,7 @@ func (bknd *backend) registerUserHandler(w http.ResponseWriter, r *http.Request)
 		bknd.failedValidationResponse(w, r, vldtr.Errors)
 		return
 	}
-	ctx, cancel := context.WithTimeout(r.Context(), 7*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
 	err = bknd.models.Users.InsertUser(ctx, user)
